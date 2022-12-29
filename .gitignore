@@ -1,3 +1,9 @@
 /.mypy_cache
 /__pycache__
 data.csv
+full_data.csv
+simple_ols.png
+predict.py
+profit.py
+.keys
+.vscode/settings.json

@@ -1,0 +1,4 @@
+.git
+venv
+full_data.csv
+mypy.ini
