@@ -6,36 +6,51 @@ import os
 import pandas as pd
 import statsmodels.api as sm
 from statsmodels.tools import add_constant
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
 
 start_date = "2010-01-01"
 ticker = "BTC-USD"
 
 
-if os.path.exists('full_data.csv'):
-    full_data = pd.read_csv('full_data.csv', parse_dates=True, index_col='Date')
-else:
-    full_data = yf.download(ticker, start=start_date)["Adj Close"]
-    full_data.to_csv('full_data.csv')
+def download(start, end) -> pd.Series:
+    full_data: pd.Series = yf.download(ticker, start=start, end=end)["Adj Close"]
+    full_data.to_csv("full_data.csv")
+    return full_data
 
 
-full_data['Time'] = np.arange(len(full_data.index))
-full_data.plot(x='Time', y='Adj Close', kind='scatter')
-plt.show()
+def load_or_download(start, end) -> pd.Series:
+    if os.path.exists("full_data.csv"):
+        full_data: pd.Series = pd.read_csv("full_data.csv", parse_dates=True, index_col="Date")
+        if start in full_data.index and end in full_data.index:
+            return full_data.loc[start:end]
+        else:
+            return download(start, end)
+    else:
+        return download(start, end)
 
-log_data = np.log(full_data)
-log_data['Time'] = np.arange(len(log_data.index))
+def predict_next_day(start_date: str, end_date: str, period: int) -> float:
+    full_data = load_or_download(start_date, end_date)
 
-X = log_data.loc[:, 'Time']
-# X = add_constant(X)
-y = log_data.loc[:, 'Adj Close']
+    # compute all rolling windows of size=period
+    rolling_windows = full_data.rolling(period, min_periods=period)
+    windows = pd.concat([rolling_windows.apply(lambda x: x[i]) for i in range(period)], axis=1).dropna()
+    columns = ['Day '+str(i) for i in range(-period+1,1)]
+    windows.columns = columns
+    target_column = 'Day 0'
+    X = windows.drop(target_column, axis=1)
+    y = windows[target_column]
 
-sns.regplot(data=log_data, x='Time', y='Adj Close', ci=99.9999, scatter_kws={'s':1})
+    # train model
+    model = LinearRegression()
+    model.fit(X, y)
 
-plt.show()
+    # predict next day's value
+    features = full_data.tail(period-1)
+    features = features.pivot_table(columns='Date', values='Adj Close')
+    features.columns = ['Day '+str(i) for i in range(-period+1,0)]
 
-# model = sm.OLS(y, X)
+    prediction: float = model.predict(features)[0]
+    return prediction
 
-# results = model.fit()
-
-# print(results.params)
-
+# prediction = predict_next_day('2015-01-01','2018-01-01', 120)
+# print(prediction)
