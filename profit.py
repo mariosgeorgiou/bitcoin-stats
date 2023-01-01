@@ -196,14 +196,14 @@ def simulate(
     for order in orders:
         print(p)
         amount = order.amount.value
-        if type(order) == BuyOrder:
+        if type(order.amount) == Dollar:
             if not p.can_buy(order.amount):
-                print("Not enough USD to buy order amount! Buying max USD available")
+                print("Not enough USD to buy order amount! Buying with max USD available")
                 amount = p.usd.value
             price = data.loc[order.date, "High"]
             p.btc += Bitcoin(amount * (1 / price) * (1 - fee))  # we buy a little less
             p.usd -= Dollar(amount)
-        elif type(order) == SellOrder:
+        elif type(order.amount) == Bitcoin:
             if not p.can_sell(order.amount):
                 print("Not enough BTC to sell order amount! Selling max BTC available")
                 amount = p.btc.value
@@ -217,10 +217,10 @@ def create_order(start: str, end: str, fee: float = 0.006):
     historic_data = load_or_download(end, end)
     todays_price = float(historic_data.loc[end])
     tomorrows_prediction = float(predict_next_day(start, end, 120))
-    if todays_price + 200 < tomorrows_prediction:
+    if todays_price + 400 < tomorrows_prediction:
         amount = tomorrows_prediction - todays_price
         return BuyOrder(Dollar(amount), end)
-    elif todays_price > tomorrows_prediction + 200:
+    elif todays_price > tomorrows_prediction + 400:
         amount = 1 / (todays_price - tomorrows_prediction)
         return SellOrder(Bitcoin(amount), end)
 
@@ -257,7 +257,7 @@ def create_daily_orders(start: str, end: str, number_of_orders: int) -> List[Ord
 def main():
     initial_portfolio = Portfolio(Dollar(10000.0), Bitcoin(0.0))
     print(initial_portfolio)
-    orders = create_daily_orders("2015-01-01", "2021-05-30", 150)
+    orders = create_daily_orders("2015-01-01", "2022-05-30", 200)
     # for order in orders:
     #     print(order)
     data = load_data()

@@ -41,7 +41,7 @@ def predict_next_day(start_date: str, end_date: str, period: int) -> float:
     y = windows[target_column]
 
     # train model
-    model = LinearRegression()
+    model = Ridge(alpha=0.0001)
     model.fit(X, y)
 
     # predict next day's value
@@ -52,5 +52,5 @@ def predict_next_day(start_date: str, end_date: str, period: int) -> float:
     prediction: float = model.predict(features)[0]
     return prediction
 
-# prediction = predict_next_day('2015-01-01','2018-01-01', 120)
-# print(prediction)
+prediction = predict_next_day('2015-01-01','2018-01-01', 120)
+print(prediction)
