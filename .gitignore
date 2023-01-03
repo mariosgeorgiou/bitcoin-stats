@@ -9,3 +9,6 @@ profit.py
 .vscode/settings.json
 full_data_2.csv
 trader.py
+accounts
+betas.csv
+crypto_data.csv
