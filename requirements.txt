@@ -1,1 +1,4 @@
 coinbase==2.1.0
+yfinance==0.1.87
+pandas==1.5.1
+scikit-learn==1.1.3

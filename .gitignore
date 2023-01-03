@@ -7,3 +7,5 @@ predict.py
 profit.py
 .keys
 .vscode/settings.json
+full_data_2.csv
+trader.py

@@ -1,19 +1,14 @@
 import yfinance as yf
-import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import pandas as pd
-import statsmodels.api as sm
-from statsmodels.tools import add_constant
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from datetime import datetime
 
-start_date = "2010-01-01"
 ticker = "BTC-USD"
 
 
 def download(start, end) -> pd.Series:
-    full_data: pd.Series = yf.download(ticker, start=start, end=end)["Adj Close"]
+    full_data = pd.DataFrame(yf.download(ticker, start=start)["Adj Close"]).loc[:end]
     full_data.to_csv("full_data.csv")
     return full_data
 
@@ -27,6 +22,9 @@ def load_or_download(start, end) -> pd.Series:
             return download(start, end)
     else:
         return download(start, end)
+
+def get_price(date: str) -> float:
+    return float(load_or_download(date, date).loc[date])
 
 def predict_next_day(start_date: str, end_date: str, period: int) -> float:
     full_data = load_or_download(start_date, end_date)
@@ -46,11 +44,11 @@ def predict_next_day(start_date: str, end_date: str, period: int) -> float:
 
     # predict next day's value
     features = full_data.tail(period-1)
-    features = features.pivot_table(columns='Date', values='Adj Close')
-    features.columns = ['Day '+str(i) for i in range(-period+1,0)]
+    features1 = features.pivot_table(columns='Date', values='Adj Close')
+    features1.columns = ['Day '+str(i) for i in range(-period+1,0)]
 
-    prediction: float = model.predict(features)[0]
+    prediction: float = model.predict(features1)[0]
     return prediction
 
-prediction = predict_next_day('2015-01-01','2018-01-01', 120)
-print(prediction)
+# prediction = predict_next_day('2015-01-01',datetime.today().strftime("%Y-%m-%d"), 120)
+# print(prediction)

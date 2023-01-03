@@ -7,7 +7,7 @@ import yfinance as yf
 import random
 from datetime import datetime, timedelta, date
 import dateutil.rrule as rrule
-from predict import predict_next_day, load_or_download
+from predict import predict_next_day, load_or_download, get_price
 import time
 
 
@@ -198,7 +198,9 @@ def simulate(
         amount = order.amount.value
         if type(order.amount) == Dollar:
             if not p.can_buy(order.amount):
-                print("Not enough USD to buy order amount! Buying with max USD available")
+                print(
+                    "Not enough USD to buy order amount! Buying with max USD available"
+                )
                 amount = p.usd.value
             price = data.loc[order.date, "High"]
             p.btc += Bitcoin(amount * (1 / price) * (1 - fee))  # we buy a little less
@@ -213,16 +215,20 @@ def simulate(
     return p
 
 
-def create_order(start: str, end: str, fee: float = 0.006):
-    historic_data = load_or_download(end, end)
-    todays_price = float(historic_data.loc[end])
-    tomorrows_prediction = float(predict_next_day(start, end, 120))
+def create_order(start: str, today: str, fee: float = 0.00):
+    todays_price = get_price(today)
+    tomorrow = get_next_date(today, 1)
+    tomorrows_price = get_price(tomorrow)
+    tomorrows_prediction = float(predict_next_day(start, today, 120))
+    print(today, "price", todays_price)
+    print(tomorrow, "price", tomorrows_price)
+    print(tomorrow, "prediction", tomorrows_prediction)
     if todays_price + 400 < tomorrows_prediction:
         amount = tomorrows_prediction - todays_price
-        return BuyOrder(Dollar(amount), end)
+        return BuyOrder(Dollar(amount), today)
     elif todays_price > tomorrows_prediction + 400:
         amount = 1 / (todays_price - tomorrows_prediction)
-        return SellOrder(Bitcoin(amount), end)
+        return SellOrder(Bitcoin(amount), today)
 
 
 def get_next_date(date_string: str, time_inteval: int) -> str:
@@ -236,17 +242,17 @@ def create_daily_orders(start: str, end: str, number_of_orders: int) -> List[Ord
     last_order_date = end
     first_order_date = get_next_date(end, -number_of_orders)
     order_dates = pd.date_range(first_order_date, last_order_date)
-    
+
     i = 0
     l = len(order_dates)
-    show_loading_bar(i, l, prefix='Progress:', suffix='Complete', length=50)
+    show_loading_bar(i, l, prefix="Progress:", suffix="Complete", length=50)
 
     for order_date in order_dates:
 
         i += 1
-        show_loading_bar(i, l, prefix='Progress:', suffix='Complete', length=50)
+        show_loading_bar(i, l, prefix="Progress:", suffix="Complete", length=50)
 
-        order = create_order(start, order_date)
+        order = create_order(start, order_date.strftime("%Y-%m-%d"))
         if order is not None:
             orders.append(order)
     last_order = SellOrder(Bitcoin(1), last_order_date)
@@ -257,7 +263,7 @@ def create_daily_orders(start: str, end: str, number_of_orders: int) -> List[Ord
 def main():
     initial_portfolio = Portfolio(Dollar(10000.0), Bitcoin(0.0))
     print(initial_portfolio)
-    orders = create_daily_orders("2015-01-01", "2022-05-30", 200)
+    orders = create_daily_orders("2015-01-01", "2021-05-30", 5)
     # for order in orders:
     #     print(order)
     data = load_data()
