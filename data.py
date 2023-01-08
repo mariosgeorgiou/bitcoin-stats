@@ -5,7 +5,7 @@ import numpy as np
 
 def get_log_returns(tickers, index, start):
     tickers.append(index)
-    data = yf.download(tickers, start)['Adj Close']
+    data = yf.download(tickers, start, threads=4)['Adj Close']
     log_returns = np.log(data/data.shift())
     return log_returns
 

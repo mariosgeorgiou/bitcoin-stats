@@ -1,5 +1,6 @@
 import json
 from coinbase.wallet.client import Client
+import coinbase.wallet.error
 import logging
 from predict import predict_next_day, get_price
 from datetime import datetime
@@ -12,8 +13,7 @@ logging.basicConfig(
 )
 
 
-def get_all_crypto_tickers():
-
+def get_client():
     # Open the keys file
     with open(".keys", "r") as f:
         keys = json.load(f)["coinbase"]
@@ -22,8 +22,17 @@ def get_all_crypto_tickers():
     api_secret = keys["COINBASE_API_SECRET"]
 
     client = Client(api_key, api_secret)
+    return client
 
-    accounts = client.get_accounts()["data"]
+
+client = get_client()
+
+
+def get_all_crypto_tickers():
+
+    client = get_client()
+
+    currencies = client.get_exchange_rates()["rates"].keys()
     yahoo_tickers = []
     unavailable = {
         "PAX",
@@ -38,52 +47,57 @@ def get_all_crypto_tickers():
         "SUPER",
         "USD",
     }
-    for account in accounts:
-        currency = account["currency"]
-        if currency not in unavailable and 'USD' not in currency:
-            yahoo_tickers.append(currency + "-USD")
+    unwanted = {
+        "00",
+    }
+
+    for ticker in currencies:
+        if ticker not in unavailable and ticker not in unwanted:
+            yahoo_tickers.append(ticker + "-USD")
 
     return yahoo_tickers
 
+
 def main():
-    # TODO: Load the keys to the docker container as environment variables using --build-arg
-    # api_key = os.getenv("COINBASE_API_KEY")
-    # api_secret = os.getenv("COINBASE_API_SECRET")
 
-    # Open the keys file
-    with open(".keys", "r") as f:
-        keys = json.load(f)["coinbase"]
+    client = get_client()
 
-    api_key = keys["COINBASE_API_KEY"]
-    api_secret = keys["COINBASE_API_SECRET"]
+    yahoo_tickers = get_all_crypto_tickers()
 
-    client = Client(api_key, api_secret)
+    index = "BTC-USD"
 
-    accounts = client.get_accounts()["data"]
-    yahoo_tickers = []
-    unavailable = {
-        "PAX",
-        "COMP",
-        "CGLD",
-        "MASK",
-        "GMT",
-        "GRT",
-        "SYN",
-        "SYN",
-        "IMX",
-        "SUPER",
-        "USD",
-    }
-    for account in accounts:
-        currency = account["currency"]
-        if currency not in unavailable and 'USD' not in currency:
-            yahoo_tickers.append(currency + "-USD")
+    betas = generate_betas(yahoo_tickers, index, "2020-10-17")
 
-    index = 'BTC-USD'
+    betas.to_csv("betas.csv")
 
-    betas = generate_betas(yahoo_tickers, index, '2020-10-17')
+    low_betas = betas[(betas < 0.7) & (betas > 0.6)].dropna()
+    low_betas.to_csv("lows.csv")
+    high_betas = betas[(betas > 1.1)].dropna()
+    high_betas.to_csv("highs.csv")
 
-    betas.to_csv('betas.csv')
+    for ticker in low_betas.index:
+        coinbase_ticker = ticker.split("-")[0]
+        try:
+            account = client.get_account(coinbase_ticker)
+        except coinbase.wallet.error.NotFoundError:
+            logging.info(f'Cannot trade {coinbase_ticker}')
+        else:
+            logging.info(f'Buying {coinbase_ticker}')
+            order = account.buy(amount="1", currency="USD")
+            logging.info(f"order details: {order}")
+
+    for ticker in high_betas.index:
+        coinbase_ticker = ticker.split("-")[0]        
+        try:
+            account = client.get_account(coinbase_ticker)
+        except coinbase.wallet.error.NotFoundError:
+            logging.info(f'Cannot trade {coinbase_ticker}')
+        else:
+            balance = float(account["native_balance"]["amount"])
+            if balance > 1.0:
+                logging.info(f'Selling {coinbase_ticker}')
+                order = account.sell(amount="1", currency="USD")
+                logging.info(f"order details: {order}")
 
 
 if __name__ == "__main__":
