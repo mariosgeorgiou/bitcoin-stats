@@ -2,9 +2,6 @@ import json
 from coinbase.wallet.client import Client
 import coinbase.wallet.error
 import logging
-from predict import predict_next_day, get_price
-from datetime import datetime
-import yfinance as yf
 from data import generate_betas
 
 # configure the logging module

@@ -5,7 +5,7 @@ full_data.csv
 simple_ols.png
 predict.py
 profit.py
-.keys
+*.keys
 .vscode/settings.json
 full_data_2.csv
 trader.py

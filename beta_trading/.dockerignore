@@ -1,0 +1,10 @@
+.git
+venv
+full_data_*
+mypy.ini
+data.csv
+graph.py
+simple-ols.png
+.mypy_cache
+.vscode
+__pycache__
